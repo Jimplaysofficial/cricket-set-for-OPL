@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPL Fixture System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 0 15px; /* Padding to avoid touching the screen edges */
+      box-sizing: border-box;
+      overflow-x: hidden; /* Prevent horizontal scrolling */
+    }
+
+    h1 {
+      font-size: 4em; /* Reduced the title size */
+      margin-bottom: 20px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      width: 100%;
+      max-width: 600px;
+      animation: fadeIn 1s ease-in-out;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 12px 24px;
+      margin: 10px;
+      background-color: #1e1e1e;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 100%; /* Ensure button scales with the container */
+      max-width: 300px;
+      font-size: 1.2em;
+    }
+
+    button:hover {
+      background-color: #333;
+    }
+
+    .dropdown-list {
+      display: none;
+      position: absolute;
+      background-color: #1e1e1e;
+      border: 1px solid #444;
+      list-style: none;
+      padding: 0;
+      margin: 5px 0;
+      z-index: 10;
+      animation: dropdownAnimation 0.5s ease-out;
+      width: 100%;
+      max-width: 300px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .dropdown-list li {
+      padding: 12px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .dropdown-list li:hover {
+      background-color: #333;
+    }
+
+    select {
+      padding: 12px;
+      background-color: #1e1e1e;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      width: 100%;
+      max-width: 300px;
+      margin-top: 10px;
+      font-size: 1.2em;
+    }
+
+    .result-section, .standings-section {
+      margin-top: 20px;
+      animation: fadeIn 1.5s ease-in-out;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      text-align: left;
+      animation: fadeIn 2s ease-in-out;
+    }
+
+    th, td {
+      border: 1px solid #444;
+      padding: 12px;
+      text-align: center;
+      transition: background-color 0.3s ease;
+    }
+
+    th {
+      background-color: #222;
+    }
+
+    td {
+      background-color: #1e1e1e;
+    }
+
+    td:hover {
+      background-color: #333;
+    }
+
+    /* Animations */
+    @keyframes dropdownAnimation {
+      0% { opacity: 0; transform: translateY(-10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* To allow extra scrolling */
+    body::after {
+      content: "";
+      display: block;
+      height: 150px; /* Adding extra space at the bottom for more scrolling */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>IPL Fixture System</h1>
+
+  <div class="section">
+    <h2>Create Fixture</h2>
+    <div>
+      <button onclick="toggleDropdown('team1Dropdown')">Select Team 1</button>
+      <span id="selectedTeam1Display"></span>
+      <ul id="team1Dropdown" class="dropdown-list"></ul>
+    </div>
+    <div>
+      <button onclick="toggleDropdown('team2Dropdown')">Select Team 2</button>
+      <span id="selectedTeam2Display"></span>
+      <ul id="team2Dropdown" class="dropdown-list"></ul>
+    </div>
+    <button onclick="createFixture()">Create Fixture</button>
+  </div>
+
+  <div class="section">
+    <h2>Select Match</h2>
+    <select id="matchDropdown" onchange="showOutcomeOption()">
+      <option value="">-- Select Match --</option>
+    </select>
+  </div>
+
+  <div id="outcomeControls" class="section" style="display:block">
+    <h2>Set Match Outcome</h2>
+    <button id="teamAWinBtn" onclick="setOutcome('A')"></button>
+    <button id="teamBWinBtn" onclick="setOutcome('B')"></button>
+  </div>
+
+  <div class="result-section">
+    <h2>Match Outcomes</h2>
+    <ul id="matchResults"></ul>
+  </div>
+
+  <div class="standings-section">
+    <h2>Team Standings</h2>
+    <table id="standingsTable">
+      <thead>
+        <tr><th>Team</th><th>Wins</th><th>Losses</th><th>Points</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Reset Button -->
+  <div class="section">
+    <button onclick="resetStandings()">Reset Standings</button>
+  </div>
+
+  <script>
+    let teams = [
+      "Mumbai Indians",
+      "Chennai Super Kings",
+      "Royal Challengers Bangalore",
+      "Kolkata Knight Riders",
+      "Delhi Capitals",
+      "Punjab Kings",
+      "Rajasthan Royals",
+      "Sunrisers Hyderabad",
+      "Lucknow Super Giants",
+      "Gujarat Titans"
+    ];
+
+    let fixtures = JSON.parse(localStorage.getItem('fixtures')) || [];
+    let standings = JSON.parse(localStorage.getItem('standings')) || {};
+
+    if (Object.keys(standings).length === 0) {
+      teams.forEach(team => {
+        standings[team] = { wins: 0, losses: 0, points: 0 };
+      });
+    }
+
+    let selectedTeam1 = null;
+    let selectedTeam2 = null;
+
+    function toggleDropdown(id) {
+      const dropdown = document.getElementById(id);
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateDropdowns() {
+      const team1Dropdown = document.getElementById('team1Dropdown');
+      const team2Dropdown = document.getElementById('team2Dropdown');
+
+      team1Dropdown.innerHTML = '';
+      team2Dropdown.innerHTML = '';
+
+      teams.forEach(team => {
+        const li1 = document.createElement('li');
+        li1.textContent = team;
+        li1.onclick = () => selectTeam(team, 1);
+        team1Dropdown.appendChild(li1);
+
+        const li2 = document.createElement('li');
+        li2.textContent = team;
+        li2.onclick = () => selectTeam(team, 2);
+        team2Dropdown.appendChild(li2);
+      });
+    }
+
+    function selectTeam(team, slot) {
+      if (slot === 1) {
+        selectedTeam1 = team;
+        document.getElementById('selectedTeam1Display').textContent = `→ ${team}`;
+      } else {
+        if (team === selectedTeam1) {
+          alert("Teams must be different.");
+          return;
+        }
+        selectedTeam2 = team;
+        document.getElementById('selectedTeam2Display').textContent = `→ ${team}`;
+      }
+    }
+
+    function createFixture() {
+      if (selectedTeam1 && selectedTeam2 && selectedTeam1 !== selectedTeam2) {
+        const fixture = `${selectedTeam1} vs ${selectedTeam2}`;
+        fixtures.push({ match: fixture, teamA: selectedTeam1, teamB: selectedTeam2, played: false, winner: null });
+
+        const matchDropdown = document.getElementById('matchDropdown');
+        const option = document.createElement('option');
+        option.value = fixture;
+        option.textContent = fixture;
+        matchDropdown.appendChild(option);
+
+        selectedTeam1 = null;
+        selectedTeam2 = null;
+        document.getElementById('selectedTeam1Display').textContent = '';
+        document.getElementById('selectedTeam2Display').textContent = '';
+
+        saveData();
+      } else {
+        alert("Please select two different teams.");
+      }
+    }
+
+    function showOutcomeOption() {
+      const selectedMatch = document.getElementById('matchDropdown').value;
+      const fixture = fixtures.find(f => f.match === selectedMatch);
+      if (fixture) {
+        document.getElementById('teamAWinBtn').textContent = fixture.teamA + " Wins";
+        document.getElementById('teamBWinBtn').textContent = fixture.teamB + " Wins";
+      }
+    }
+
+    function setOutcome(winnerSide) {
+      const selectedMatch = document.getElementById('matchDropdown').value;
+      if (!selectedMatch) return;
+
+      const fixture = fixtures.find(f => f.match === selectedMatch);
+      if (fixture) {
+        fixture.played = true;
+        fixture.winner = winnerSide === 'A' ? fixture.teamA : fixture.teamB;
+        const loser = winnerSide === 'A' ? fixture.teamB : fixture.teamA;
+
+        // Update standings with wins, losses, and points
+        standings[fixture.winner].wins += 1;
+        standings[fixture.winner].points += 5; // 5 points for a win
+        standings[loser].losses += 1;
+        standings[loser].points -= 3; // Deduct 3 points for a loss
+
+        updateResults();
+        updateStandings();
+        saveData();
+      }
+    }
+
+    function updateResults() {
+      const resultList = document.getElementById('matchResults');
+      resultList.innerHTML = '';
+      fixtures.forEach(f => {
+        if (f.played) {
+          const li = document.createElement('li');
+          li.textContent = `${f.match} → Winner: ${f.winner}`;
+          resultList.appendChild(li);
+        }
+      });
+    }
+
+    function updateStandings() {
+      const tbody = document.querySelector('#standingsTable tbody');
+      tbody.innerHTML = '';
+      const sortedTeams = Object.keys(standings).sort((a, b) => standings[b].points - standings[a].points);
+
+      sortedTeams.forEach(team => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${team}</td>
+          <td>${standings[team].wins}</td>
+          <td>${standings[team].losses}</td>
+          <td>${standings[team].points}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function saveData() {
+      localStorage.setItem('fixtures', JSON.stringify(fixtures));
+      localStorage.setItem('standings', JSON.stringify(standings));
+    }
+
+    function resetStandings() {
+      standings = {};
+      teams.forEach(team => {
+        standings[team] = { wins: 0, losses: 0, points: 0 };
+      });
+
+      updateStandings();
+      saveData();
+    }
+
+    updateDropdowns();
+    updateStandings();
+  </script>
+
+</body>
+</html>

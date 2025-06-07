@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Simulation Game</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e1e1e, #2c3e50);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            transition: background-color 0.3s ease-in-out;
+        }
+        #game-container {
+            background-color: rgba(44, 62, 80, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+            transition: transform 0.3s ease;
+        }
+        #game-container:hover {
+            transform: scale(1.05);
+        }
+        h1 {
+            font-size: 3em;
+            color: #f39c12;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            animation: pulse 1.5s infinite alternate;
+        }
+        button {
+            background-color: #3498db;
+            border: none;
+            padding: 18px 30px;
+            margin: 20px;
+            font-size: 1.6em;
+            border-radius: 12px;
+            cursor: pointer;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .scoreboard {
+            font-size: 2em;
+            margin-top: 20px;
+            transition: color 0.3s ease;
+            font-family: 'Verdana', sans-serif;
+        }
+        .runs-info {
+            font-size: 1.6em;
+            color: #f39c12;
+            margin-top: 10px;
+            transition: opacity 0.3s ease-in-out;
+        }
+        #commentary {
+            font-size: 1.5em;
+            margin-top: 30px;
+            font-style: italic;
+            color: #ecf0f1;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out forwards;
+        }
+        .falling-text {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3em;
+            font-weight: bold;
+            animation: fall 2s ease-out forwards;
+        }
+        @keyframes fall {
+            0% { top: -50px; opacity: 1; }
+            100% { top: 100vh; opacity: 0; }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .falling-text-one {
+            color: #3498db;  /* Blue for 1 run */
+        }
+        .falling-text-two {
+            color: #2ecc71;  /* Green for 2 runs */
+        }
+        .falling-text-four {
+            color: #f39c12;  /* Orange for 4 runs */
+        }
+        .falling-text-six {
+            color: #e74c3c;  /* Red for 6 runs */
+        }
+        .scoreboard p {
+            transition: transform 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Cricket Simulation Game</h1>
+        <button onclick="simulateCricket()">Simulate Ball</button>
+        <div class="scoreboard">
+            <p>Score: <span id="score">0</span></p>
+            <p>Wickets: <span id="wickets">0</span></p>
+        </div>
+        <div id="commentary" class="bouncing-text"></div>
+        <div class="runs-info" id="runs-info"></div>
+    </div>
+
+    <script>
+        const commentary = {
+            one: [
+                "A single taken, solid but unspectacular.",
+                "He pushes it for a quick single.",
+                "Just a single, but they’ll take it.",
+                "Nice timing, but only a single.",
+                "The bowler keeps it tight, just the one."
+            ],
+            two: [
+                "Two runs taken, solid running!",
+                "That’s a well-judged pair, excellent running.",
+                "Two runs, they move quickly.",
+                "Good call, they get back for two.",
+                "Sharp running for two, they’re quick today."
+            ],
+            four: [
+                "Four runs! Clean and crisp!",
+                "What a shot! That’s four!",
+                "That’s a textbook boundary!",
+                "A brilliant strike, it races away for four.",
+                "Boundary! Four runs!"
+            ],
+            six: [
+                "BOOM! Six runs! What a hit!",
+                "That’s massive! SIX!",
+                "He’s launched it out of the park — SIX!",
+                "What a clean hit! SIX!",
+                "Up, up and away! SIX!"
+            ],
+            wicket: [
+                "He’s gone! What a breakthrough!",
+                "Big wicket! The batsman departs.",
+                "That’s a huge wicket! He’s walking off.",
+                "He’s edged it! That’s the end of him!",
+                "Gone! Big breakthrough for the bowler."
+            ]
+        };
+
+        let score = 0;
+        let wickets = 0;
+
+        function getRandomOutcome() {
+            const outcomes = ['one', 'two', 'four', 'six', 'wicket'];
+            const randomIndex = Math.floor(Math.random() * outcomes.length);
+            return outcomes[randomIndex];
+        }
+
+        function getRandomCommentary(outcome) {
+            const lines = commentary[outcome];
+            const randomIndex = Math.floor(Math.random() * lines.length);
+            return lines[randomIndex];
+        }
+
+        function speak(text, type = 'neutral') {
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            switch (type) {
+                case 'one':
+                    utterance.pitch = 0.6;
+                    utterance.rate = 0.8;
+                    utterance.volume = 1.0;
+                    break;
+                case 'two':
+                    utterance.pitch = 1.0;
+                    utterance.rate = 1.0;
+                    utterance.volume = 1.0;
+                    break;
+                case 'four':
+                    utterance.pitch = 1.2;
+                    utterance.rate = 1.2;
+                    utterance.volume = 1.0;
+                    break;
+                case 'six':
+                    utterance.pitch = 1.5;
+                    utterance.rate = 1.3;
+                    utterance.volume = 5.2;
+                    break;
+                case 'wicket':
+                    utterance.pitch = 0.9;
+                    utterance.rate = 0.7;
+                    utterance.volume = 0.8;
+                    break;
+                default:
+                    utterance.pitch = 1.0;
+                    utterance.rate = 1.0;
+                    utterance.volume = 1.0;
+                    break;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function simulateCricket() {
+            const outcome = getRandomOutcome();
+            const comment = getRandomCommentary(outcome);
+            let runsAdded = 0;
+
+            if (outcome === 'wicket') {
+                wickets++;
+                document.getElementById('wickets').textContent = wickets;
+                speak(comment, 'wicket');
+                
+                // Create falling text when wicket happens
+                const fallingText = document.createElement("div");
+                fallingText.className = "falling-text";
+                fallingText.textContent = "WICKET!";
+                document.body.appendChild(fallingText);
+                setTimeout(() => {
+                    document.body.removeChild(fallingText);
+                }, 2000); // Remove the falling text after 2 seconds
+            } else {
+                if (outcome === 'one') {
+                    runsAdded = 1;
+                    // Falling text for 1 run
+                    const fallingText = document.createElement("div");
+                    fallingText.className = "falling-text falling-text-one";
+                    fallingText.textContent = "1 RUN";
+                    document.body.appendChild(fallingText);
+                    setTimeout(() => {
+                        document.body.removeChild(fallingText);
+                    }, 2000);
+                } else if (outcome === 'two') {
+                    runsAdded = 2;
+                    // Falling text for 2 runs
+                    const fallingText = document.createElement("div");
+                    fallingText.className = "falling-text falling-text-two";
+                    fallingText.textContent = "2 RUNS";
+                    document.body.appendChild(fallingText);
+                    setTimeout(() => {
+                        document.body.removeChild(fallingText);
+                    }, 2000);
+                } else if (outcome === 'four') {
+                    runsAdded = 4;
+                    // Falling text for 4 runs
+                    const fallingText = document.createElement("div");
+                    fallingText.className = "falling-text falling-text-four";
+                    fallingText.textContent = "4 RUNS";
+                    document.body.appendChild(fallingText);
+                    setTimeout(() => {
+                        document.body.removeChild(fallingText);
+                    }, 2000);
+                } else if (outcome === 'six') {
+                    runsAdded = 6;
+                    // Falling text for 6 runs
+                    const fallingText = document.createElement("div");
+                    fallingText.className = "falling-text falling-text-six";
+                    fallingText.textContent = "6 RUNS!";
+                    document.body.appendChild(fallingText);
+                    setTimeout(() => {
+                        document.body.removeChild(fallingText);
+                    }, 2000);
+                }
+
+                score += runsAdded;
+                document.getElementById('score').textContent = score;
+                speak(comment, outcome);
+            }
+
+            // Animate the commentary
+            const commentaryElement = document.getElementById('commentary');
+            commentaryElement.style.opacity = 0;  // Hide before update
+            setTimeout(() => {
+                commentaryElement.textContent = comment;
+                commentaryElement.style.opacity = 1;  // Fade in with effect
+            }, 500); // Delay for smooth transition
+
+            // Display runs added per ball with smooth animation
+            const runsInfo = document.getElementById('runs-info');
+            runsInfo.style.opacity = 0;  // Hide before update
+            setTimeout(() => {
+                runsInfo.textContent = `Runs added this ball: ${runsAdded}`;
+                runsInfo.style.opacity = 1;  // Fade in with effect
+            }, 500);
+
+            // Add tweening effect for score update
+            $(".scoreboard p").each(function() {
+                $(this).animate({fontSize: "2em"}, 300);
+                $(this).animate({fontSize: "1.8em"}, 300);
+            });
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</body>
+</html>
